@@ -10,6 +10,7 @@
 #include <iostream>
 #include <vector>
 #include <ctime>
+#include <random>
 #include <math.h>
 #include "LED.h"
 #include "Position.h"
@@ -43,8 +44,14 @@ const string windowName3 = "After Morphological Operations";
 const string windowName4 = "Extra Test Window";
 const string trackbarWindowName = "Trackbars";
 
+// Vector of particles and object
+double *oldScore;
 vector<Position> objectCoord;
 vector<Particle> particles;
+
+
+// first time running flag
+bool firstRun = true;
 
 void on_trackbar(int, void*)
 {
@@ -227,26 +234,38 @@ void CallBackFunc(int event, int x, int y, int flags, void* userdata) {
 	}
 }
 
+// Resample particles to generate new one
+void resample(vector<double> cumulative) {
+	default_random_engine generator;
+	uniform_real_distribution<double> distribution(0.0f, 1.0f);
+	vector<Particle> newParticles(particles.size());
+
+	for (int ii = 0; ii < particles.size(); ii++) {
+		double uniRand = distribution(generator);
+
+		// Iterate through to see where is the position in the cumulative sum
+		vector<double>::iterator pos = lower_bound(cumulative.begin(), cumulative.end(), uniRand);
+		int iPos = distance(cumulative.begin(), pos) - 1;
+		//printf("IPOS: %d\n", iPos);
+		newParticles[ii].setX(particles[iPos].getX());
+		newParticles[ii].setY(particles[iPos].getY());
+		newParticles[ii].setZ(particles[iPos].getZ());
+		newParticles[ii].setRoll(particles[iPos].getRoll());
+		newParticles[ii].setPitch(particles[iPos].getPitch());
+		newParticles[ii].setYaw(particles[iPos].getYaw());
+		newParticles[ii].setScore(0);
+	}
+
+	particles.clear();
+	particles.insert(particles.begin(), newParticles.begin(), newParticles.end());
+}
+
 // Scoring particles function
 void scoreParticles(Mat &feed) {
 	double temp = 0, total = 0;
 	double d1, d2, t1, t2;
+	vector<double> cumulative(particles.size());
 	vector<double> scores;
-
-	//for (int ii = 0; ii < particles.size(); ii++) {
-	//	Particle &p = particles[ii];
-	//	int size = 5;
-	//	Mat roi = feed(Rect(p.m_x-size, p.m_y-size, size*2, size*2));
-	//	Vec3f col;
-
-	//	for(int x = 0; x < roi.cols; x++) {
-	//		for(int y = 0; y < roi.rows; y++) {
-	//			Vec3f temp = roi.at<Vec3f>(y,x);
-	//			col += temp;
-	//		}
-	//	}
-	//	cout << col[0] << ',' << col[1] << ',' << col[2] << endl;
-	//}
 
 	// This will iterate through and calculate the distance between each particle and each object detected
 	// Then it will feed the calculated distance into a function to give it a score
@@ -263,27 +282,40 @@ void scoreParticles(Mat &feed) {
 			//printf("D1: %f D2: %f T1: %f T2: %f TEMP: %.50f\n", d1, d2, t1, t2, temp);
 			
 		}
-		// Updating particles' score and also calculate the total score
+
+		// Update particle's score and also calculate the total score
 		sort(scores.begin(), scores.end());
 		
 		if (scores.size() != 0) {
-			particles[ii].setScore(scores[scores.size()-1]);
+			// If first run then no change to score otherwise need to multiply by old weight
+			if (firstRun == true)
+				particles[ii].setScore(scores[scores.size()-1]);
+			else
+				particles[ii].setScore(scores[scores.size()-1] * oldScore[ii]);
 			total += scores[scores.size()-1];
+			oldScore[ii] = particles[ii].getScore();
 			scores.clear();
 		}
 	}
 	
 	// Normalise the score for all particles
 	if (total > 0) {
-		for (int ii = 0; ii < particles.size(); ii++)
-			particles[ii].setScore(particles[ii].getScore() / total) ;
+		for (int ii = 0; ii < particles.size(); ii++) {
+			particles[ii].setScore(particles[ii].getScore() / total);
+
+			if (ii == 0)
+				cumulative[ii] = particles[ii].getScore();
+			else if (ii == (particles.size() - 1))
+				cumulative[ii] = 1.0;
+			else
+				cumulative[ii] = cumulative[ii-1] + particles[ii].getScore();
+		}
 	}
+
+	// This will crash the program...
+	//resample(cumulative);
 }
 
-// Resample particles to generate new one
-void resample() {
-	
-}
 
 // Iterate through and output all particles' score
 void outputScores() {
@@ -309,12 +341,15 @@ void medianFilter(Mat &img) {
 					counter++;
 				}
 			}
+
 			sort(pixVal, pixVal + 9);
 			img.data[(img.step[0] * (row + 1)) + (img.step[1] * (col + 1)) + 0] = pixVal[4];
 			img.data[(img.step[0] * (row + 1)) + (img.step[1] * (col + 1)) + 1] = pixVal[4];
 			img.data[(img.step[0] * (row + 1)) + (img.step[1] * (col + 1)) + 2] = pixVal[4];
 		}
 	}
+
+	delete [] pixVal;
 }
 
 int main(int argc, char* argv[])
@@ -327,6 +362,8 @@ int main(int argc, char* argv[])
 	Mat threshold;
 	Mat filteredThresh;
 	Mat HSV;
+
+	oldScore = new double[NUM_PARTICLES];
 
 	if(calibrationMode){
 		//create slider bars for HSV filtering
@@ -352,6 +389,7 @@ int main(int argc, char* argv[])
 	//namedWindow(windowName2);
 	//namedWindow(windowName3);
 	//namedWindow(windowName4);
+	
 	// Mouse click event
 	setMouseCallback(windowName, CallBackFunc, NULL);
 
@@ -388,7 +426,6 @@ int main(int argc, char* argv[])
 		}
 
 		scoreParticles(cameraFeed);
-		outputScores();
 
 		//filteredThresh = threshold.clone();
 		//medianFilter(threshold);
