@@ -19,7 +19,7 @@ public:
 
 	Particle(int x, int y, int z, int roll, int pitch, int yaw);
 
-	int getScore() { return m_score; }
+	double getScore() { return m_score; }
 	void setScore(double score) { m_score = score; }
 
 private:

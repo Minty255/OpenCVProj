@@ -32,7 +32,7 @@ const int MAX_NUM_OBJECTS=500;
 const int MIN_OBJECT_AREA = 10*10;
 const int MAX_OBJECT_AREA = 40*40;//FRAME_HEIGHT*FRAME_WIDTH/1.5;
 //numbers of particle
-const int NUM_PARTICLES = 1;
+const int NUM_PARTICLES = 100;
 // constant for adjusting
 const double LAMDA = 20.0;
 //names that will appear at the top of each window
@@ -144,16 +144,19 @@ void trackFilteredObject(Mat threshold,Mat HSV, Mat &cameraFeed) {
 
 					objectFound = true;
 
-				}else objectFound = false;
-
-
+				} else {
+					objectFound = false;
+				}
 			}
 			//let user know you found an object
-			if(objectFound ==true){
+			if(objectFound ==true) {
 				//draw object location on screen
-				drawObject(reds,cameraFeed);}
+				drawObject(reds,cameraFeed);
+			}
 
-		}else putText(cameraFeed,"TOO MUCH NOISE! ADJUST FILTER",Point(0,50),1,2,Scalar(0,0,255),2);
+		} else {
+			putText(cameraFeed,"TOO MUCH NOISE! ADJUST FILTER",Point(0,50),1,2,Scalar(0,0,255),2);
+		}
 	}
 }
 
@@ -190,18 +193,11 @@ void trackFilteredObject(LED theLED, Mat threshold,Mat HSV, Mat &cameraFeed) {
 					led.setColour(theLED.getColour());
 					leds.push_back(led);
 
-					// TESTING
-				//	unsigned char *input = (unsigned char*)(cameraFeed.data);
-				//	int r, g, b;
+					objectFound = true;
 
-				//	g = input[cameraFeed.cols * (led.getYPos() + 10) + (led.getXPos()+10)];
-				//	b = input[cameraFeed.cols * (led.getYPos() + 10) + (led.getXPos()+10) + 1];
-				//	r = input[cameraFeed.cols * (led.getYPos() + 10) + (led.getXPos()+10) + 2];
-					
-			//		if ((r > 150) && (g < 150) && (b < 150))
-						objectFound = true;
-
-				} else objectFound = false;
+				} else {
+					objectFound = false;
+				}
 			}
 
 			//let user know you found an object
@@ -209,7 +205,9 @@ void trackFilteredObject(LED theLED, Mat threshold,Mat HSV, Mat &cameraFeed) {
 				//draw object location on screen
 				drawObject(leds,cameraFeed);
 			}
-		} else putText(cameraFeed,"TOO MUCH NOISE! ADJUST FILTER",Point(0,50),1,2,Scalar(0,0,255),2);
+		} else {
+			putText(cameraFeed,"TOO MUCH NOISE! ADJUST FILTER",Point(0,50),1,2,Scalar(0,0,255),2);
+		}
 	}
 }
 
@@ -233,6 +231,7 @@ void CallBackFunc(int event, int x, int y, int flags, void* userdata) {
 void scoreParticles(Mat &feed) {
 	double temp = 0, total = 0;
 	double d1, d2, t1, t2;
+	vector<double> scores;
 
 	//for (int ii = 0; ii < particles.size(); ii++) {
 	//	Particle &p = particles[ii];
@@ -254,26 +253,31 @@ void scoreParticles(Mat &feed) {
 	// Highest score (closest distance) between a particle and an object will be store
 	for (int ii = 0; ii < particles.size(); ii++) {
 		for (int jj = 0; jj < objectCoord.size(); jj++) {
-			d1 = pow((double)(particles[ii].getX() - objectCoord[ii].getX()), 2);
-			d2 = pow((double)(particles[ii].getY() - objectCoord[ii].getY()), 2);
+			d1 = pow((double)(particles[ii].getX() - objectCoord[jj].getX()), 2);
+			d2 = pow((double)(particles[ii].getY() - objectCoord[jj].getY()), 2);
 			t1 = 1/LAMDA;
 			t2 = sqrt(d1+d2);
 			temp = t1*exp(-t1*t2);
 			
-			printf("D1: %f D2: %f T1: %f T2: %f TEMP: %.50f\n", d1, d2, t1, t2, temp);
+			scores.push_back(temp);
+			//printf("D1: %f D2: %f T1: %f T2: %f TEMP: %.50f\n", d1, d2, t1, t2, temp);
 			
-			// Updating particles' score and also calculate the total score
-			if (temp > particles[ii].getScore()) {
-				total -= particles[ii].getScore();
-				particles[ii].setScore(temp);
-				total += particles[ii].getScore();
-			}
+		}
+		// Updating particles' score and also calculate the total score
+		sort(scores.begin(), scores.end());
+		
+		if (scores.size() != 0) {
+			particles[ii].setScore(scores[scores.size()-1]);
+			total += scores[scores.size()-1];
+			scores.clear();
 		}
 	}
-
+	
 	// Normalise the score for all particles
-	for (int ii = 0; ii < particles.size(); ii++)
-		particles[ii].setScore(particles[ii].getScore() / total) ;
+	if (total > 0) {
+		for (int ii = 0; ii < particles.size(); ii++)
+			particles[ii].setScore(particles[ii].getScore() / total) ;
+	}
 }
 
 // Resample particles to generate new one
@@ -284,7 +288,7 @@ void resample() {
 // Iterate through and output all particles' score
 void outputScores() {
 	for (int ii = 0; ii < particles.size(); ii++)
-		printf("Particle (%d, %d): %f\n", particles[ii].getX(), particles[ii].getY(), particles[ii].getScore());
+		printf("Particle (%d, %d): %.50f\n", particles[ii].getX(), particles[ii].getY(), particles[ii].getScore());
 }
 
 // Median filter will help filter out noise
@@ -336,7 +340,6 @@ int main(int argc, char* argv[])
 	capture.set(CV_CAP_PROP_FRAME_WIDTH,FRAME_WIDTH);
 	capture.set(CV_CAP_PROP_FRAME_HEIGHT,FRAME_HEIGHT);
 	
-
 	// Generate random particles
 	for (int ii = 0; ii < NUM_PARTICLES; ii++) {
 		Particle temp(abs(rand()%(FRAME_WIDTH)), abs(rand()%(FRAME_HEIGHT)), 0,0,0,0);
@@ -381,11 +384,11 @@ int main(int argc, char* argv[])
 		
 		// Display particle on the actual image frame
 		for (int ii = 0; ii < particles.size(); ii++) {
-			cv::circle(cameraFeed, cv::Point(particles[ii].getX(), particles[ii].getY()), 1, Scalar(0, 0, 255), 2, 0, 0);
+			cv::circle(cameraFeed, cv::Point(particles[ii].getX(), particles[ii].getY()), 1, Scalar(0, 0, 255), 1, 0, 0);
 		}
 
 		scoreParticles(cameraFeed);
-		//outputScores();
+		outputScores();
 
 		//filteredThresh = threshold.clone();
 		//medianFilter(threshold);
