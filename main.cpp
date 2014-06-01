@@ -3,19 +3,7 @@
 // Date:	May 2014
 // Info:	Multiple objects detection using blob detection approach
 //			This code has been downloaded with modification and built on top.
-
-//Written by  Kyle Hounslow 2013
-
-//Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software")
-//, to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, 
-//and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-//The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-//FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
-//LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-//IN THE SOFTWARE.
+//			Originally written by Kyle Hounslow
 
 #include <sstream>
 #include <string>
@@ -52,6 +40,7 @@ const string windowName = "Original Image";
 const string windowName1 = "HSV Image";
 const string windowName2 = "Thresholded Image";
 const string windowName3 = "After Morphological Operations";
+const string windowName4 = "Extra Test Window";
 const string trackbarWindowName = "Trackbars";
 
 vector<Position> objectCoord;
@@ -265,8 +254,8 @@ void scoreParticles(Mat &feed) {
 	// Highest score (closest distance) between a particle and an object will be store
 	for (int ii = 0; ii < particles.size(); ii++) {
 		for (int jj = 0; jj < objectCoord.size(); jj++) {
-			d1 = pow((double)(particles[ii].m_x - objectCoord[ii].m_x), 2);
-			d2 = pow((double)(particles[ii].m_y - objectCoord[ii].m_y), 2);
+			d1 = pow((double)(particles[ii].getX() - objectCoord[ii].getX()), 2);
+			d2 = pow((double)(particles[ii].getY() - objectCoord[ii].getY()), 2);
 			t1 = 1/LAMDA;
 			t2 = sqrt(d1+d2);
 			temp = t1*exp(-t1*t2);
@@ -274,9 +263,9 @@ void scoreParticles(Mat &feed) {
 			printf("D1: %f D2: %f T1: %f T2: %f TEMP: %.50f\n", d1, d2, t1, t2, temp);
 			
 			// Updating particles' score and also calculate the total score
-			if (temp > particles[ii].m_score) {
+			if (temp > particles[ii].getScore()) {
 				total -= particles[ii].getScore();
-				particles[ii].m_score = temp;
+				particles[ii].setScore(temp);
 				total += particles[ii].getScore();
 			}
 		}
@@ -284,7 +273,7 @@ void scoreParticles(Mat &feed) {
 
 	// Normalise the score for all particles
 	for (int ii = 0; ii < particles.size(); ii++)
-		particles[ii].m_score /= total;
+		particles[ii].setScore(particles[ii].getScore() / total) ;
 }
 
 // Resample particles to generate new one
@@ -295,7 +284,33 @@ void resample() {
 // Iterate through and output all particles' score
 void outputScores() {
 	for (int ii = 0; ii < particles.size(); ii++)
-		printf("Particle (%d, %d): %f\n", particles[ii].m_x, particles[ii].m_y, particles[ii].m_score);
+		printf("Particle (%d, %d): %f\n", particles[ii].getX(), particles[ii].getY(), particles[ii].getScore());
+}
+
+// Median filter will help filter out noise
+// THIS MAKE PROCESSING WAYYYY TOO SLOW!
+void medianFilter(Mat &img) {
+	int *pixVal = new int[9];
+	int counter = 0;
+	unsigned char *input = (unsigned char*)(img.data);
+
+	for (int col = 0; col < img.cols - 3; col++) {
+		for (int row = 0; row < img.rows - 3; row++) {
+			counter = 0;
+			for (int ii = 0; ii < 3; ii++) {
+				for (int jj = 0; jj < 3; jj++) {
+					pixVal[counter] = (input[(img.step[0] * (row + ii)) + (img.step[1] * (col + jj)) + 0] +
+										input[(img.step[0] * (row + ii)) + (img.step[1] * (col + jj)) + 1] +
+										input[(img.step[0] * (row + ii)) + (img.step[1] * (col + jj)) + 2]) / 3;
+					counter++;
+				}
+			}
+			sort(pixVal, pixVal + 9);
+			img.data[(img.step[0] * (row + 1)) + (img.step[1] * (col + 1)) + 0] = pixVal[4];
+			img.data[(img.step[0] * (row + 1)) + (img.step[1] * (col + 1)) + 1] = pixVal[4];
+			img.data[(img.step[0] * (row + 1)) + (img.step[1] * (col + 1)) + 2] = pixVal[4];
+		}
+	}
 }
 
 int main(int argc, char* argv[])
@@ -306,6 +321,7 @@ int main(int argc, char* argv[])
 	//Matrix to store each frame of the webcam feed
 	Mat cameraFeed;
 	Mat threshold;
+	Mat filteredThresh;
 	Mat HSV;
 
 	if(calibrationMode){
@@ -328,10 +344,14 @@ int main(int argc, char* argv[])
 		particles.push_back(temp);
 	}
 
+	namedWindow(windowName);
+	//namedWindow(windowName1);
+	//namedWindow(windowName2);
+	//namedWindow(windowName3);
+	//namedWindow(windowName4);
 	// Mouse click event
 	setMouseCallback(windowName, CallBackFunc, NULL);
 
-	namedWindow(windowName);
 	//start an infinite loop where webcam feed is copied to cameraFeed matrix
 	//all of our operations will be performed within this loop
 	while(1) {
@@ -361,16 +381,19 @@ int main(int argc, char* argv[])
 		
 		// Display particle on the actual image frame
 		for (int ii = 0; ii < particles.size(); ii++) {
-			cv::circle(cameraFeed, cv::Point(particles[ii].getX(), particles[ii].getY()), 2, cv::Scalar(0, 0, 255));
+			cv::circle(cameraFeed, cv::Point(particles[ii].getX(), particles[ii].getY()), 1, Scalar(0, 0, 255), 2, 0, 0);
 		}
 
 		scoreParticles(cameraFeed);
 		//outputScores();
 
+		//filteredThresh = threshold.clone();
+		//medianFilter(threshold);
+
 		//show frames 
 		imshow(windowName,cameraFeed);
 		imshow(windowName1,threshold);
-
+		//imshow(windowName4, filteredThresh);
 		//delay 30ms so that screen can refresh.
 		//image will not appear without this waitKey() command
 		waitKey(30);

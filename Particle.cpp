@@ -10,8 +10,7 @@ Particle::Particle(void)
 {
 }
 
-Particle::Particle(int x, int y, int z, int roll, int pitch, int yaw) {
-	
+Particle::Particle(int x, int y, int z, int roll, int pitch, int yaw) : Position(x, y, z, roll, pitch, yaw) {
 	m_score = 0;
 }
 

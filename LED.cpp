@@ -21,13 +21,8 @@ LED::LED(string name) {
 
 	if (name == "red") {
 		// Orange ping pong ball @HOME
-
-		/* HSV FOR RED HALO
-		HSVMin(160, 91, 251)
-		HSVMax(202, 256, 256)*/
-
-		setHSVMin(Scalar(0, 100, 175));
-		setHSVMax(Scalar(70, 256, 256));
+		setHSVMin(Scalar(16, 96, 226));
+		setHSVMax(Scalar(35, 256, 256));
 		setColour(Scalar(0, 0, 255));
 
 	}

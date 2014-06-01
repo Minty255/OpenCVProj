@@ -6,11 +6,12 @@
 #include <string>
 #include <opencv\cv.h>
 #include <opencv\highgui.h>
+#include "Position.h"
 
 using namespace cv;
 using namespace std;
 
-class Particle
+class Particle : public Position
 {
 public:
 	Particle(void);
@@ -21,7 +22,7 @@ public:
 	int getScore() { return m_score; }
 	void setScore(double score) { m_score = score; }
 
-public:
+private:
 	double m_score;
 };
 
