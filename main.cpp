@@ -3,7 +3,19 @@
 // Date:	May 2014
 // Info:	Multiple objects detection using blob detection approach
 //			This code has been downloaded with modification and built on top.
-//			Originally written by Kyle Hounslow
+
+//Written by  Kyle Hounslow 2013
+
+//Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software")
+//, to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, 
+//and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+//The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+//LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+//IN THE SOFTWARE.
 
 #include <sstream>
 #include <string>
@@ -33,7 +45,7 @@ const int MAX_NUM_OBJECTS=500;
 const int MIN_OBJECT_AREA = 10*10;
 const int MAX_OBJECT_AREA = 40*40;//FRAME_HEIGHT*FRAME_WIDTH/1.5;
 //numbers of particle
-const int NUM_PARTICLES = 100;
+const int NUM_PARTICLES = 1000;
 // constant for adjusting
 const double LAMDA = 20.0;
 //names that will appear at the top of each window
@@ -238,22 +250,21 @@ void CallBackFunc(int event, int x, int y, int flags, void* userdata) {
 void resample(vector<double> cumulative) {
 	default_random_engine generator;
 	uniform_real_distribution<double> distribution(0.0f, 1.0f);
-	vector<Particle> newParticles(particles.size());
+	vector<Particle> newParticles;
 
 	for (int ii = 0; ii < particles.size(); ii++) {
 		double uniRand = distribution(generator);
+		int iPos = 0;
 
 		// Iterate through to see where is the position in the cumulative sum
-		vector<double>::iterator pos = lower_bound(cumulative.begin(), cumulative.end(), uniRand);
-		int iPos = distance(cumulative.begin(), pos) - 1;
-		//printf("IPOS: %d\n", iPos);
-		newParticles[ii].setX(particles[iPos].getX());
-		newParticles[ii].setY(particles[iPos].getY());
-		newParticles[ii].setZ(particles[iPos].getZ());
-		newParticles[ii].setRoll(particles[iPos].getRoll());
-		newParticles[ii].setPitch(particles[iPos].getPitch());
-		newParticles[ii].setYaw(particles[iPos].getYaw());
-		newParticles[ii].setScore(0);
+		// This will iterate through and stop at either the last element or found the correct place
+		while ((iPos < cumulative.size()-1) && (cumulative[iPos] < uniRand))
+			iPos++;
+
+		// Copy particles to new location
+		newParticles.push_back(Particle(particles[iPos].getX(), particles[iPos].getY(), particles[iPos].getZ(),
+										particles[iPos].getRoll(), particles[iPos].getPitch(), particles[iPos].getYaw()));
+		newParticles[0].setScore(1.0f/particles.size());
 	}
 
 	particles.clear();
@@ -262,8 +273,9 @@ void resample(vector<double> cumulative) {
 
 // Scoring particles function
 void scoreParticles(Mat &feed) {
-	double temp = 0, total = 0;
+	double temp = 0.0, total = 0.0;
 	double d1, d2, t1, t2;
+	double sumSqrtWt = 0.0;
 	vector<double> cumulative(particles.size());
 	vector<double> scores;
 
@@ -280,7 +292,6 @@ void scoreParticles(Mat &feed) {
 			
 			scores.push_back(temp);
 			//printf("D1: %f D2: %f T1: %f T2: %f TEMP: %.50f\n", d1, d2, t1, t2, temp);
-			
 		}
 
 		// Update particle's score and also calculate the total score
@@ -292,6 +303,7 @@ void scoreParticles(Mat &feed) {
 				particles[ii].setScore(scores[scores.size()-1]);
 			else
 				particles[ii].setScore(scores[scores.size()-1] * oldScore[ii]);
+			
 			total += scores[scores.size()-1];
 			oldScore[ii] = particles[ii].getScore();
 			scores.clear();
@@ -309,11 +321,17 @@ void scoreParticles(Mat &feed) {
 				cumulative[ii] = 1.0;
 			else
 				cumulative[ii] = cumulative[ii-1] + particles[ii].getScore();
+
+			sumSqrtWt += pow(particles[ii].getScore(), 2);
 		}
 	}
 
+	// Calculate the survival rate of particles
+	double survivalRate = 1.0 / (sumSqrtWt * particles.size());
+
 	// This will crash the program...
-	//resample(cumulative);
+	if (survivalRate < 0.5) // Check if 20% of particles will gonna survive before resample
+		resample(cumulative);
 }
 
 
