@@ -1,31 +1,38 @@
 // File:	main.cpp
 // By:		Minh Dang
 // Date:	May 2014
-// Info:	Multiple objects detection using blob detection approach
+// Info:	Multiple objects detection using blob detection approach.
+//			Also contain implementation of particles filter
+//			Credits to: Dr Raymond Sheh and Dr Patrick Peursum for explaining
+//			the theory behind particles filters.
 //			This code has been downloaded with modification and built on top.
 
 //Written by  Kyle Hounslow 2013
 
-//Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software")
-//, to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, 
-//and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+//Permission is hereby granted, free of charge, to any person obtaining a copy 
+//of this software and associated documentation files (the "Software"), to deal
+//in the Software without restriction, including without limitation the rights 
+//to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+//of the Software, and to permit persons to whom the Software is furnished to do
+//so, subject to the following conditions:
 
-//The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
 
-//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-//FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
-//LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-//IN THE SOFTWARE.
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+//FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+//COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+//CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <sstream>
-#include <string>
 #include <iostream>
 #include <vector>
 #include <ctime>
 #include <random>
 #include <math.h>
 #include "LED.h"
-#include "Position.h"
 #include "Particle.h"
 
 //initial min and max HSV filter values.
@@ -89,10 +96,10 @@ void createTrackbars() {
 	sprintf(TrackbarName, "V_MIN", V_MIN);
 	sprintf(TrackbarName, "V_MAX", V_MAX);
 	//create trackbars and insert them into window
-	//3 parameters are: the address of the variable that is changing when the trackbar is moved(eg.H_LOW),
-	//the max value the trackbar can move (eg. H_HIGH), 
-	//and the function that is called whenever the trackbar is moved(eg. on_trackbar)
-	//                                  ---->    ---->     ---->      
+	//3 parameters are: the address of the variable that is changing when the
+	//trackbar is moved(eg.H_LOW), the max value the trackbar can move (eg. H_HIGH), 
+	//and the function that is called whenever the trackbar is 
+	//moved(eg. on_trackbar)                    ---->    ---->     ---->      
 	createTrackbar("H_MIN", trackbarWindowName, &H_MIN, H_MAX, on_trackbar );
 	createTrackbar("H_MAX", trackbarWindowName, &H_MAX, H_MAX, on_trackbar );
 	createTrackbar("S_MIN", trackbarWindowName, &S_MIN, S_MAX, on_trackbar );
@@ -105,10 +112,12 @@ void drawObject(vector<LED> theLEDs,Mat &frame) {
 	for (int ii = 0; ii < theLEDs.size(); ii++) {
 		Particle temp(theLEDs[ii].getXPos(), theLEDs[ii].getYPos(), 0, 0, 0, 0);
 		objectCoord.push_back(temp);
-		cv::circle(frame, cv::Point(theLEDs[ii].getXPos(), theLEDs[ii].getYPos()), 5, cv::Scalar(0, 0, 255));
+		cv::circle(frame, cv::Point(theLEDs[ii].getXPos(), theLEDs[ii].getYPos()),
+					5, cv::Scalar(0, 0, 255));
 		// Label the object with coordinate
-		cv::putText(frame, intToString(theLEDs[ii].getXPos())+ " , " + intToString(theLEDs[ii].getYPos()), cv::Point(theLEDs[ii].getXPos(), theLEDs[ii].getYPos()+20), 1, 1, Scalar(0, 255, 0));
-		//cv::putText(frame, theLEDs[ii].getType(), cv::Point(theLEDs[ii].getXPos(), theLEDs[ii].getYPos()-30), 1, 2, theLEDs[ii].getColour()); 
+		cv::putText(frame, intToString(theLEDs[ii].getXPos())+ " , " +
+				intToString(theLEDs[ii].getYPos()), cv::Point(theLEDs[ii].getXPos(),
+				theLEDs[ii].getYPos()+20), 1, 1, Scalar(0, 255, 0));
 	}
 }
 
@@ -149,9 +158,10 @@ void trackFilteredObject(Mat threshold,Mat HSV, Mat &cameraFeed) {
 				Moments moment = moments((cv::Mat)contours[index]);
 				double area = moment.m00;
 
-				//if the area is less than 20 px by 20px then it is probably just noise
-				//if the area is the same as the 3/2 of the image size, probably just a bad filter
-				//we only want the object with the largest area so we safe a reference area each
+				//if the area is less than 20x20px then it is probably just noise
+				//if the area is the same as the 3/2 of the image size, probably
+				//just a bad filter we only want the object with the largest
+				//area so we safe a reference area each
 				//iteration and compare it to the area in the next iteration.
 				if(area>MIN_OBJECT_AREA && area<MAX_OBJECT_AREA){
 					LED red;
@@ -172,9 +182,9 @@ void trackFilteredObject(Mat threshold,Mat HSV, Mat &cameraFeed) {
 				//draw object location on screen
 				drawObject(reds,cameraFeed);
 			}
-
 		} else {
-			putText(cameraFeed,"TOO MUCH NOISE! ADJUST FILTER",Point(0,50),1,2,Scalar(0,0,255),2);
+			putText(cameraFeed,"TOO MUCH NOISE! ADJUST FILTER",Point(0,50),
+					1,2,Scalar(0,0,255),2);
 		}
 	}
 }
@@ -201,8 +211,8 @@ void trackFilteredObject(LED theLED, Mat threshold,Mat HSV, Mat &cameraFeed) {
 
 				Moments moment = moments((cv::Mat)contours[index]);
 				double area = moment.m00;
-
-				// Checking for object area - has been modified to check for small light source
+				
+				// Check for object area
 				if(area>MIN_OBJECT_AREA){
 					LED led;
 
@@ -225,7 +235,8 @@ void trackFilteredObject(LED theLED, Mat threshold,Mat HSV, Mat &cameraFeed) {
 				drawObject(leds,cameraFeed);
 			}
 		} else {
-			putText(cameraFeed,"TOO MUCH NOISE! ADJUST FILTER",Point(0,50),1,2,Scalar(0,0,255),2);
+			putText(cameraFeed,"TOO MUCH NOISE! ADJUST FILTER",Point(0,50),
+					1,2,Scalar(0,0,255),2);
 		}
 	}
 }
@@ -233,16 +244,17 @@ void trackFilteredObject(LED theLED, Mat threshold,Mat HSV, Mat &cameraFeed) {
 // Callback function for mouse event
 void CallBackFunc(int event, int x, int y, int flags, void* userdata) {
 	if(event == EVENT_LBUTTONDOWN) {
+		// Use for testing, create/modify first particle
 		particles[0].setX(x);
 		particles[0].setY(y);
 
-		cout << "Left button of the mouse is clicked - position (" << x << ", " << y << ")" << endl;
+		cout << "Left button clicked - position (" << x << ", " << y << ")" << endl;
 	} else if(event == EVENT_RBUTTONDOWN) {
-		cout << "Right button of the mouse is clicked - position (" << x << ", " << y << ")" << endl;
+		cout << "Right button clicked - position (" << x << ", " << y << ")" << endl;
 	} else if(event == EVENT_MBUTTONDOWN) {
-		cout << "Middle button of the mouse is clicked - position (" << x << ", " << y << ")" << endl;
+		cout << "Middle button clicked - position (" << x << ", " << y << ")" << endl;
 	} else if (event == EVENT_MOUSEMOVE) {
-		//cout << "Mouse move over the window - position (" << x << ", " << y << ")" << endl;
+		//cout << "Mouse move - position (" << x << ", " << y << ")" << endl;
 	}
 }
 
@@ -257,13 +269,17 @@ void resample(vector<double> cumulative) {
 		int iPos = 0;
 
 		// Iterate through to see where is the position in the cumulative sum
-		// This will iterate through and stop at either the last element or found the correct place
+		// This will iterate through and stop at either the last element or found
+		// the correct place
 		while ((iPos < cumulative.size()-1) && (cumulative[iPos] < uniRand))
 			iPos++;
 
+		// THIS NEED CLEAN UP
 		// Copy particles to new location
-		newParticles.push_back(Particle(particles[iPos].getX(), particles[iPos].getY(), particles[iPos].getZ(),
-										particles[iPos].getRoll(), particles[iPos].getPitch(), particles[iPos].getYaw()));
+		newParticles.push_back(Particle(particles[iPos].getX(), 
+			particles[iPos].getY(), particles[iPos].getZ(),	particles[iPos].getRoll(),
+			particles[iPos].getPitch(), particles[iPos].getYaw()));
+
 		newParticles[0].setScore(1.0f/particles.size());
 	}
 
@@ -279,9 +295,9 @@ void scoreParticles(Mat &feed) {
 	vector<double> cumulative(particles.size());
 	vector<double> scores;
 
-	// This will iterate through and calculate the distance between each particle and each object detected
+	// This will iterate through, cal the dist between each particle and each obj
 	// Then it will feed the calculated distance into a function to give it a score
-	// Highest score (closest distance) between a particle and an object will be store
+	// Highest score (closest dist) between a particle and an object will be store
 	for (int ii = 0; ii < particles.size(); ii++) {
 		for (int jj = 0; jj < objectCoord.size(); jj++) {
 			d1 = pow((double)(particles[ii].getX() - objectCoord[jj].getX()), 2);
@@ -291,14 +307,13 @@ void scoreParticles(Mat &feed) {
 			temp = t1*exp(-t1*t2);
 			
 			scores.push_back(temp);
-			//printf("D1: %f D2: %f T1: %f T2: %f TEMP: %.50f\n", d1, d2, t1, t2, temp);
 		}
 
 		// Update particle's score and also calculate the total score
 		sort(scores.begin(), scores.end());
 		
 		if (scores.size() != 0) {
-			// If first run then no change to score otherwise need to multiply by old weight
+			// If first run, no change to score otherwise need to multiply by old wt
 			if (firstRun == true)
 				particles[ii].setScore(scores[scores.size()-1]);
 			else
@@ -330,15 +345,15 @@ void scoreParticles(Mat &feed) {
 	double survivalRate = 1.0 / (sumSqrtWt * particles.size());
 
 	// This will crash the program...
-	if (survivalRate < 0.5) // Check if 20% of particles will gonna survive before resample
+	if (survivalRate < 0.5) // Check % of particles gonna survive before resample
 		resample(cumulative);
 }
-
 
 // Iterate through and output all particles' score
 void outputScores() {
 	for (int ii = 0; ii < particles.size(); ii++)
-		printf("Particle (%d, %d): %.50f\n", particles[ii].getX(), particles[ii].getY(), particles[ii].getScore());
+		printf("Particle (%d, %d): %.50f\n", particles[ii].getX(),
+				particles[ii].getY(), particles[ii].getScore());
 }
 
 // Median filter will help filter out noise
@@ -353,17 +368,17 @@ void medianFilter(Mat &img) {
 			counter = 0;
 			for (int ii = 0; ii < 3; ii++) {
 				for (int jj = 0; jj < 3; jj++) {
-					pixVal[counter] = (input[(img.step[0] * (row + ii)) + (img.step[1] * (col + jj)) + 0] +
-										input[(img.step[0] * (row + ii)) + (img.step[1] * (col + jj)) + 1] +
-										input[(img.step[0] * (row + ii)) + (img.step[1] * (col + jj)) + 2]) / 3;
+					pixVal[counter] = (input[(img.step[0]*(row+ii)) + (img.step[1]*(col+jj))]
+									+ input[(img.step[0]*(row+ii)) + (img.step[1]*(col+jj)) + 1] +
+									input[(img.step[0]*(row+ii)) + (img.step[1]*(col+jj)) + 2])/3;
 					counter++;
 				}
 			}
 
 			sort(pixVal, pixVal + 9);
-			img.data[(img.step[0] * (row + 1)) + (img.step[1] * (col + 1)) + 0] = pixVal[4];
-			img.data[(img.step[0] * (row + 1)) + (img.step[1] * (col + 1)) + 1] = pixVal[4];
-			img.data[(img.step[0] * (row + 1)) + (img.step[1] * (col + 1)) + 2] = pixVal[4];
+			img.data[(img.step[0]*(row+1)) + (img.step[1]*(col+1)) + 0] = pixVal[4];
+			img.data[(img.step[0]*(row+1)) + (img.step[1]*(col+1)) + 1] = pixVal[4];
+			img.data[(img.step[0]*(row+1)) + (img.step[1]*(col+1)) + 2] = pixVal[4];
 		}
 	}
 
@@ -440,7 +455,8 @@ int main(int argc, char* argv[])
 		
 		// Display particle on the actual image frame
 		for (int ii = 0; ii < particles.size(); ii++) {
-			cv::circle(cameraFeed, cv::Point(particles[ii].getX(), particles[ii].getY()), 1, Scalar(0, 0, 255), 1, 0, 0);
+			cv::circle(cameraFeed, cv::Point(particles[ii].getX(), particles[ii].getY()),
+						1, Scalar(0, 0, 255), 1, 0, 0);
 		}
 
 		scoreParticles(cameraFeed);

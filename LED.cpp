@@ -1,8 +1,8 @@
 // File:	LED.cpp
 // By:		Minh Dang
 // Date:	May 2014
-// Info:	The purpose of this file is to use for 
-//			classifying more than one type of object
+// Info:	This class in charge of storing HSV values
+//			for image filtering to detect objects.
 
 #include "LED.h"
 

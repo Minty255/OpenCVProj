@@ -1,6 +1,7 @@
 // File:	Position.h
 // By:		Minh Dang
 // Date:	May 2014
+// Info:	Definition for Position.cpp
 
 #pragma once
 #include <string>

@@ -1,8 +1,7 @@
 // File:	LED.h
 // By:		Minh Dang
 // Date:	May 2014
-// Info:	The purpose of this file is to use for 
-//			classifying more than one type of object
+// Info:	Definition for LED.cpp
 
 #pragma once
 #include <string>

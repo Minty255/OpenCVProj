@@ -1,6 +1,8 @@
 // File:	Position.cpp
 // By:		Minh Dang
 // Date:	May 2014
+// Info:	This class is a container class for position and
+//			orientation of objects in 6D space.
 
 #include "Position.h"
 

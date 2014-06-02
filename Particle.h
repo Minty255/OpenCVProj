@@ -1,11 +1,9 @@
 // File:	Particle.h
 // By:		Minh Dang
 // Date:	May 2014
+// Info:	Definition for Particle.cpp
 
 #pragma once
-#include <string>
-#include <opencv\cv.h>
-#include <opencv\highgui.h>
 #include "Position.h"
 
 using namespace cv;
