@@ -32,6 +32,7 @@
 #include <ctime>
 #include <random>
 #include <math.h>
+#include <time.h>
 #include "LED.h"
 #include "Particle.h"
 
@@ -49,8 +50,8 @@ const int FRAME_HEIGHT = 480;
 //max number of objects to be detected in frame
 const int MAX_NUM_OBJECTS=500;
 //minimum and maximum object area
-const int MIN_OBJECT_AREA = 10*10;
-const int MAX_OBJECT_AREA = 40*40;//FRAME_HEIGHT*FRAME_WIDTH/1.5;
+const int MIN_OBJECT_AREA = 5*5;
+const int MAX_OBJECT_AREA = 20*20;//FRAME_HEIGHT*FRAME_WIDTH/1.5;
 //numbers of particle
 const int NUM_PARTICLES = 1000;
 // constant for adjusting
@@ -278,24 +279,36 @@ void resample(vector<double> cumulative) {
 	vector<Particle> newParticles;
 
 	int newX, newY, newZ, newRoll, newPitch, newYaw;
+	int bound = (double)particles.size() * 0.85;
 
 	for (int ii = 0; ii < particles.size(); ii++) {
 		double uniRand = distribution(generator);
 		int iPos = 0;
 
-		// Iterate through to see where is the position in the cumulative sum
-		// This will iterate through and stop at either the last element or found
-		// the correct place
-		// This while loop code is provided by Dr Patrick Peursum 2nd June 2014
-		while ((iPos < cumulative.size()-1) && (cumulative[iPos] < uniRand))
-			iPos++;
+		// Only keep a % of old particles, the rest will be generated, this way we
+		// can ensure that new objects enter the scene can still be detected
+		if (ii < bound) {
+			// Iterate through to see where is the position in the cumulative sum
+			// This will iterate through and stop at either the last element or found
+			// the correct place
+			// This while loop code is provided by Dr Patrick Peursum 2nd June 2014
+			while ((iPos < cumulative.size()-1) && (cumulative[iPos] < uniRand)) {
+				iPos++;
+			}
 
-		// Copy particles to new location
-		newX = genNewCoord(particles[iPos].getX(), FRAME_WIDTH);
-		newY = genNewCoord(particles[iPos].getY(), FRAME_HEIGHT);
-		newParticles.push_back(Particle(newX, newY, particles[iPos].getZ(),
-					particles[iPos].getRoll(), particles[iPos].getPitch(),
-					particles[iPos].getYaw()));
+			// Copy particles to new location
+			newX = genNewCoord(particles[iPos].getX(), FRAME_WIDTH);
+			newY = genNewCoord(particles[iPos].getY(), FRAME_HEIGHT);
+			newParticles.push_back(Particle(newX, newY, particles[iPos].getZ(),
+						particles[iPos].getRoll(), particles[iPos].getPitch(),
+						particles[iPos].getYaw()));
+
+			//oldScore[particles.size()-1] = particles[iPos].getScore();
+		} else {
+			newParticles.push_back(
+					Particle(rand()%FRAME_WIDTH, rand()%FRAME_HEIGHT, 0, 0, 0, 0));
+			//oldScore[particles.size()-1] = 0;
+		}
 
 		newParticles[0].setScore(1.0f/particles.size());
 	}
@@ -331,14 +344,15 @@ void scoreParticles(Mat &feed) {
 		sort(scores.begin(), scores.end());
 		
 		if (scores.size() != 0) {
+			// THIS CONTAIN BUG WHICH NEED TO BE FIX - don't know how to yet...
 			// If first run, no change to score otherwise need to multiply by old wt
-			if (firstRun == true)
+			//if (firstRun == true) {
 				particles[ii].setScore(scores[scores.size()-1]);
-			else
-				particles[ii].setScore(scores[scores.size()-1] * oldScore[ii]);
+			//	firstRun = false;
+			//} else
+			//	particles[ii].setScore(scores[scores.size()-1] * oldScore[ii]);
 			
 			total += scores[scores.size()-1];
-			oldScore[ii] = particles[ii].getScore();
 			scores.clear();
 		}
 	}
@@ -364,7 +378,7 @@ void scoreParticles(Mat &feed) {
 	double survivalRate = 1.0 / (sumSqrtWt * particles.size());
 
 	// Check % of particles gonna survive before resample
-	if (survivalRate < 0.3) 
+	//if (survivalRate > 0.2) 
 		resample(cumulative);
 }
 
@@ -407,7 +421,7 @@ void medianFilter(Mat &img) {
 int main(int argc, char* argv[])
 {
 	//if we would like to calibrate our filter values, set to true.
-	bool calibrationMode = false;
+	bool calibrationMode = true;
 	
 	//Matrix to store each frame of the webcam feed
 	Mat cameraFeed;
@@ -429,6 +443,7 @@ int main(int argc, char* argv[])
 	capture.set(CV_CAP_PROP_FRAME_WIDTH,FRAME_WIDTH);
 	capture.set(CV_CAP_PROP_FRAME_HEIGHT,FRAME_HEIGHT);
 	
+	srand(time(NULL));
 	// Generate random particles
 	for (int ii = 0; ii < NUM_PARTICLES; ii++) {
 		Particle temp(abs(rand()%(FRAME_WIDTH)), abs(rand()%(FRAME_HEIGHT)), 0,0,0,0);

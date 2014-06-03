@@ -25,6 +25,15 @@ LED::LED(string name) {
 		setHSVMax(Scalar(35, 256, 256));
 		setColour(Scalar(0, 0, 255));
 
+		// TESTING FOR QUAD LIGHT
+		//setHSVMin(Scalar(142, 0, 254));
+		//setHSVMax(Scalar(153, 7, 256));
+		//setColour(Scalar(0, 0, 255));
+
+		// TEST BALL @LAB
+		//setHSVMin(Scalar(0, 88, 168));
+		//setHSVMax(Scalar(39, 228, 256));
+		//setColour(Scalar(0, 0, 255));
 	}
 
 	if (name == "blue") {
