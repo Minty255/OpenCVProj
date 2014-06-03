@@ -51,7 +51,7 @@ const int FRAME_HEIGHT = 480;
 const int MAX_NUM_OBJECTS=500;
 //minimum and maximum object area
 const int MIN_OBJECT_AREA = 5*5;
-const int MAX_OBJECT_AREA = 20*20;//FRAME_HEIGHT*FRAME_WIDTH/1.5;
+const int MAX_OBJECT_AREA = FRAME_HEIGHT*FRAME_WIDTH/1.5;
 //numbers of particle
 const int NUM_PARTICLES = 1000;
 // constant for adjusting
@@ -428,6 +428,7 @@ int main(int argc, char* argv[])
 	Mat threshold;
 	Mat filteredThresh;
 	Mat HSV;
+	Mat LAB;
 
 	oldScore = new double[NUM_PARTICLES];
 
@@ -469,14 +470,18 @@ int main(int argc, char* argv[])
 		//store image to matrix	
 		capture.read(cameraFeed);
 		//convert frame from BGR to HSV colorspace
-		cvtColor(cameraFeed,HSV,COLOR_BGR2HSV);
+		//cvtColor(cameraFeed,HSV,COLOR_BGR2HSV);
+
+		// TESTING
+		cvtColor(cameraFeed, LAB, COLOR_BGR2Lab);
 
 		if(calibrationMode==true) {
 			//if in calibration mode, we track objects based on the HSV slider values.
 			cvtColor(cameraFeed,HSV,COLOR_BGR2HSV);
-			inRange(HSV,Scalar(H_MIN,S_MIN,V_MIN),Scalar(H_MAX,S_MAX,V_MAX),threshold);
+			//inRange(HSV,Scalar(H_MIN,S_MIN,V_MIN),Scalar(H_MAX,S_MAX,V_MAX),threshold);
+			inRange(LAB,Scalar(H_MIN,S_MIN,V_MIN),Scalar(H_MAX,S_MAX,V_MAX),threshold);
 			morphOps(threshold);
-			imshow(windowName2,threshold);
+			imshow(windowName2,LAB);
 			trackFilteredObject(threshold,HSV,cameraFeed);
 		} else {
 			// Declare a list of object to be label - LED's colours
@@ -507,5 +512,14 @@ int main(int argc, char* argv[])
 		waitKey(30);
 	}
 
+
+	// TESTING LAB COLOUR SPACE
+/*	while(1) {
+		capture.read(cameraFeed);
+		cvtColor(cameraFeed, threshold, CV_BGR2Lab);
+		imshow(windowName,threshold);
+		waitKey(30);
+	}
+	*/
 	return 0;
 }
