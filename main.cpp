@@ -55,6 +55,8 @@ const int MAX_OBJECT_AREA = 40*40;//FRAME_HEIGHT*FRAME_WIDTH/1.5;
 const int NUM_PARTICLES = 1000;
 // constant for adjusting
 const double LAMDA = 20.0;
+// constant for uncertainty
+const int UNCERT = 15;
 //names that will appear at the top of each window
 const string windowName = "Original Image";
 const string windowName1 = "HSV Image";
@@ -258,11 +260,24 @@ void CallBackFunc(int event, int x, int y, int flags, void* userdata) {
 	}
 }
 
+// Generate new particles given a boundary and range
+int genNewCoord(int currCoord, int uBoundary) {
+	int newCoord;
+	
+	do {
+		newCoord = currCoord + (rand() % UNCERT + (-(UNCERT - 10)));
+	} while (!((newCoord >= 0) && (newCoord <= uBoundary)));
+
+	return newCoord;
+}
+
 // Resample particles to generate new one
 void resample(vector<double> cumulative) {
 	default_random_engine generator;
 	uniform_real_distribution<double> distribution(0.0f, 1.0f);
 	vector<Particle> newParticles;
+
+	int newX, newY, newZ, newRoll, newPitch, newYaw;
 
 	for (int ii = 0; ii < particles.size(); ii++) {
 		double uniRand = distribution(generator);
@@ -271,18 +286,21 @@ void resample(vector<double> cumulative) {
 		// Iterate through to see where is the position in the cumulative sum
 		// This will iterate through and stop at either the last element or found
 		// the correct place
+		// This while loop code is provided by Dr Patrick Peursum 2nd June 2014
 		while ((iPos < cumulative.size()-1) && (cumulative[iPos] < uniRand))
 			iPos++;
 
-		// THIS NEED CLEAN UP
 		// Copy particles to new location
-		newParticles.push_back(Particle(particles[iPos].getX(), 
-			particles[iPos].getY(), particles[iPos].getZ(),	particles[iPos].getRoll(),
-			particles[iPos].getPitch(), particles[iPos].getYaw()));
+		newX = genNewCoord(particles[iPos].getX(), FRAME_WIDTH);
+		newY = genNewCoord(particles[iPos].getY(), FRAME_HEIGHT);
+		newParticles.push_back(Particle(newX, newY, particles[iPos].getZ(),
+					particles[iPos].getRoll(), particles[iPos].getPitch(),
+					particles[iPos].getYaw()));
 
 		newParticles[0].setScore(1.0f/particles.size());
 	}
 
+	// Clean the old particles vector store newly generated particles
 	particles.clear();
 	particles.insert(particles.begin(), newParticles.begin(), newParticles.end());
 }
@@ -326,6 +344,7 @@ void scoreParticles(Mat &feed) {
 	}
 	
 	// Normalise the score for all particles
+	// Also construct a cummulatives score for all the particles
 	if (total > 0) {
 		for (int ii = 0; ii < particles.size(); ii++) {
 			particles[ii].setScore(particles[ii].getScore() / total);
@@ -344,8 +363,8 @@ void scoreParticles(Mat &feed) {
 	// Calculate the survival rate of particles
 	double survivalRate = 1.0 / (sumSqrtWt * particles.size());
 
-	// This will crash the program...
-	if (survivalRate < 0.5) // Check % of particles gonna survive before resample
+	// Check % of particles gonna survive before resample
+	if (survivalRate < 0.3) 
 		resample(cumulative);
 }
 
