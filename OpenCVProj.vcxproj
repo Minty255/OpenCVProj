@@ -10,6 +10,17 @@
       <Platform>Win32</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="LED.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="Particle.cpp" />
+    <ClCompile Include="Position.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="LED.h" />
+    <ClInclude Include="Particle.h" />
+    <ClInclude Include="Position.h" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{0E2406AE-7777-4F3B-87E7-7ECC5F5F4D7F}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
@@ -83,19 +94,6 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="LED.cpp" />
-    <ClCompile Include="main.cpp">
-      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OPENCV_DIR)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <ClCompile Include="Particle.cpp" />
-    <ClCompile Include="Position.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="LED.h" />
-    <ClInclude Include="Particle.h" />
-    <ClInclude Include="Position.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

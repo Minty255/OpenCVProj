@@ -428,7 +428,7 @@ int main(int argc, char* argv[])
 	Mat threshold;
 	Mat filteredThresh;
 	Mat HSV;
-	Mat LAB;
+	Mat YUV;
 
 	oldScore = new double[NUM_PARTICLES];
 
@@ -472,17 +472,14 @@ int main(int argc, char* argv[])
 		//convert frame from BGR to HSV colorspace
 		//cvtColor(cameraFeed,HSV,COLOR_BGR2HSV);
 
-		// TESTING
-		cvtColor(cameraFeed, LAB, COLOR_BGR2Lab);
-
 		if(calibrationMode==true) {
 			//if in calibration mode, we track objects based on the HSV slider values.
-			cvtColor(cameraFeed,HSV,COLOR_BGR2HSV);
+			cvtColor(cameraFeed,YUV,COLOR_BGR2YUV);
 			//inRange(HSV,Scalar(H_MIN,S_MIN,V_MIN),Scalar(H_MAX,S_MAX,V_MAX),threshold);
-			inRange(LAB,Scalar(H_MIN,S_MIN,V_MIN),Scalar(H_MAX,S_MAX,V_MAX),threshold);
+			inRange(YUV,Scalar(H_MIN,S_MIN,V_MIN),Scalar(H_MAX,S_MAX,V_MAX),threshold);
 			morphOps(threshold);
-			imshow(windowName2,LAB);
-			trackFilteredObject(threshold,HSV,cameraFeed);
+			imshow(windowName2,YUV);
+			trackFilteredObject(threshold,YUV,cameraFeed);
 		} else {
 			// Declare a list of object to be label - LED's colours
 			LED red("red");
