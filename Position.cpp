@@ -6,8 +6,7 @@
 
 #include "Position.h"
 
-Position::Position(void)
-{
+Position::Position(void) {
 }
 
 Position::Position(int x, int y, int z, int roll, int pitch, int yaw) {
@@ -19,6 +18,5 @@ Position::Position(int x, int y, int z, int roll, int pitch, int yaw) {
 	m_yaw = yaw;
 }
 
-Position::~Position(void)
-{
+Position::~Position(void) {
 }

@@ -25,11 +25,11 @@ public:
 	int getYPos() { return yPos; }
 	void setYPos(int y) { yPos = y; }
 
-	Scalar getHSVMin() { return hsvMin; }
-	void setHSVMin(Scalar min) { hsvMin = min; }
+	Scalar getYUVMin() { return YUVMin; }
+	void setYUVMin(Scalar min) { YUVMin = min; }
 
-	Scalar getHSVMax() { return hsvMax; }
-	void setHSVMax(Scalar max) { hsvMax = max; }
+	Scalar getYUVMax() { return YUVMax; }
+	void setYUVMax(Scalar max) { YUVMax = max; }
 
 	string getType() { return type; }
 	void setType(string t) { type = t; }
@@ -40,7 +40,7 @@ public:
 private:
 	int xPos, yPos;
 	string type;
-	Scalar hsvMin, hsvMax;
+	Scalar YUVMin, YUVMax;
 	Scalar colour;
 };
 

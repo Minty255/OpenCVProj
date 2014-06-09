@@ -7,8 +7,7 @@
 
 #include "Particle.h"
 
-Particle::Particle(void)
-{
+Particle::Particle(void) {
 }
 
 // Take in the parameters and call the super class alternate constructor
@@ -17,6 +16,5 @@ Particle::Particle(int x, int y, int z, int roll, int pitch, int yaw)
 	m_score = 0;
 }
 
-Particle::~Particle(void)
-{
+Particle::~Particle(void) {
 }

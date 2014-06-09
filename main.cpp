@@ -36,12 +36,12 @@
 #include "LED.h"
 #include "Particle.h"
 
-//initial min and max HSV filter values.
+//initial min and max YUV filter values.
 //these will be changed using trackbars
-int H_MIN = 0;
-int H_MAX = 256;
-int S_MIN = 0;
-int S_MAX = 256;
+int Y_MIN = 0;
+int Y_MAX = 256;
+int U_MIN = 0;
+int U_MAX = 256;
 int V_MIN = 0;
 int V_MAX = 256;
 //default capture width and height
@@ -50,7 +50,7 @@ const int FRAME_HEIGHT = 480;
 //max number of objects to be detected in frame
 const int MAX_NUM_OBJECTS=500;
 //minimum and maximum object area
-const int MIN_OBJECT_AREA = 5*5;
+const int MIN_OBJECT_AREA = 3*3;
 const int MAX_OBJECT_AREA = FRAME_HEIGHT*FRAME_WIDTH/1.5;
 //numbers of particle
 const int NUM_PARTICLES = 1000;
@@ -60,7 +60,7 @@ const double LAMDA = 20.0;
 const int UNCERT = 15;
 //names that will appear at the top of each window
 const string windowName = "Original Image";
-const string windowName1 = "HSV Image";
+const string windowName1 = "YUV Image";
 const string windowName2 = "Thresholded Image";
 const string windowName3 = "After Morphological Operations";
 const string windowName4 = "Extra Test Window";
@@ -92,10 +92,10 @@ void createTrackbars() {
 	namedWindow(trackbarWindowName, 0);
 	//create memory to store trackbar name on window
 	char TrackbarName[50];
-	sprintf(TrackbarName, "H_MIN", H_MIN);
-	sprintf(TrackbarName, "H_MAX", H_MAX);
-	sprintf(TrackbarName, "S_MIN", S_MIN);
-	sprintf(TrackbarName, "S_MAX", S_MAX);
+	sprintf(TrackbarName, "Y_MIN", Y_MIN);
+	sprintf(TrackbarName, "Y_MAX", Y_MAX);
+	sprintf(TrackbarName, "U_MIN", U_MIN);
+	sprintf(TrackbarName, "U_MAX", U_MAX);
 	sprintf(TrackbarName, "V_MIN", V_MIN);
 	sprintf(TrackbarName, "V_MAX", V_MAX);
 	//create trackbars and insert them into window
@@ -103,10 +103,10 @@ void createTrackbars() {
 	//trackbar is moved(eg.H_LOW), the max value the trackbar can move (eg. H_HIGH), 
 	//and the function that is called whenever the trackbar is 
 	//moved(eg. on_trackbar)                    ---->    ---->     ---->      
-	createTrackbar("H_MIN", trackbarWindowName, &H_MIN, H_MAX, on_trackbar );
-	createTrackbar("H_MAX", trackbarWindowName, &H_MAX, H_MAX, on_trackbar );
-	createTrackbar("S_MIN", trackbarWindowName, &S_MIN, S_MAX, on_trackbar );
-	createTrackbar("S_MAX", trackbarWindowName, &S_MAX, S_MAX, on_trackbar );
+	createTrackbar("Y_MIN", trackbarWindowName, &Y_MIN, Y_MAX, on_trackbar );
+	createTrackbar("Y_MAX", trackbarWindowName, &Y_MAX, Y_MAX, on_trackbar );
+	createTrackbar("U_MIN", trackbarWindowName, &U_MIN, U_MAX, on_trackbar );
+	createTrackbar("U_MAX", trackbarWindowName, &U_MAX, U_MAX, on_trackbar );
 	createTrackbar("V_MIN", trackbarWindowName, &V_MIN, V_MAX, on_trackbar );
 	createTrackbar("V_MAX", trackbarWindowName, &V_MAX, V_MAX, on_trackbar );
 }
@@ -138,7 +138,7 @@ void morphOps(Mat &thresh) {
 	dilate(thresh, thresh, dilateElement);
 }
 
-void trackFilteredObject(Mat threshold,Mat HSV, Mat &cameraFeed) {
+void trackFilteredObject(Mat threshold,Mat YUV, Mat &cameraFeed) {
 
 	vector<LED> reds;
 
@@ -193,7 +193,7 @@ void trackFilteredObject(Mat threshold,Mat HSV, Mat &cameraFeed) {
 }
 
 // Overloading method for multiple object tracking
-void trackFilteredObject(LED theLED, Mat threshold,Mat HSV, Mat &cameraFeed) {
+void trackFilteredObject(LED theLED, Mat threshold,Mat YUV, Mat &cameraFeed) {
 	vector<LED> leds;
 	Mat temp;
 
@@ -322,7 +322,7 @@ void resample(vector<double> cumulative) {
 void scoreParticles(Mat &feed) {
 	double temp = 0.0, total = 0.0;
 	double d1, d2, t1, t2;
-	double sumSqrtWt = 0.0;
+	double sumSqrtWt = 0.0, highest = 0.0;
 	vector<double> cumulative(particles.size());
 	vector<double> scores;
 
@@ -370,8 +370,24 @@ void scoreParticles(Mat &feed) {
 			else
 				cumulative[ii] = cumulative[ii-1] + particles[ii].getScore();
 
+			// Get highest
+			if (particles[ii].getScore() > highest)
+				highest = particles[ii].getScore();
+
 			sumSqrtWt += pow(particles[ii].getScore(), 2);
 		}
+	}
+
+	double threshScore = highest*.10;
+
+	// Display particle on the actual image frame
+	for (int ii = 0; ii < particles.size(); ii++) {
+		if (particles[ii].getScore() > threshScore)
+			cv::circle(feed, cv::Point(particles[ii].getX(), particles[ii].getY()),
+					1, Scalar(0, 0, 255), 2, 0, 0);
+		else
+			cv::circle(feed, cv::Point(particles[ii].getX(), particles[ii].getY()),
+					1, Scalar(255, 0, 0), 2, 0, 0);
 	}
 
 	// Calculate the survival rate of particles
@@ -427,13 +443,12 @@ int main(int argc, char* argv[])
 	Mat cameraFeed;
 	Mat threshold;
 	Mat filteredThresh;
-	Mat HSV;
 	Mat YUV;
 
 	oldScore = new double[NUM_PARTICLES];
 
 	if(calibrationMode){
-		//create slider bars for HSV filtering
+		//create slider bars for YUV filtering
 		createTrackbars();
 	}
 	//video capture object to acquire webcam feed
@@ -447,7 +462,7 @@ int main(int argc, char* argv[])
 	srand(time(NULL));
 	// Generate random particles
 	for (int ii = 0; ii < NUM_PARTICLES; ii++) {
-		Particle temp(abs(rand()%(FRAME_WIDTH)), abs(rand()%(FRAME_HEIGHT)), 0,0,0,0);
+		Particle temp(rand()%(FRAME_WIDTH), rand()%(FRAME_HEIGHT), 0,0,0,0);
 //		Particle temp(100, 100, 0, 0, 0, 0);
 		particles.push_back(temp);
 	}
@@ -469,40 +484,34 @@ int main(int argc, char* argv[])
 		
 		//store image to matrix	
 		capture.read(cameraFeed);
-		//convert frame from BGR to HSV colorspace
-		//cvtColor(cameraFeed,HSV,COLOR_BGR2HSV);
+		//convert frame from BGR to YUV colorspace
+		//cvtColor(cameraFeed,YUV,COLOR_BGR2YUV);
 
 		if(calibrationMode==true) {
-			//if in calibration mode, we track objects based on the HSV slider values.
+			//if in calibration mode, we track objects based on the YUV slider values.
 			cvtColor(cameraFeed,YUV,COLOR_BGR2YUV);
-			//inRange(HSV,Scalar(H_MIN,S_MIN,V_MIN),Scalar(H_MAX,S_MAX,V_MAX),threshold);
-			inRange(YUV,Scalar(H_MIN,S_MIN,V_MIN),Scalar(H_MAX,S_MAX,V_MAX),threshold);
+			//inRange(YUV,Scalar(Y_MIN,U_MIN,V_MIN),Scalar(Y_MAX,U_MAX,V_MAX),threshold);
+			inRange(YUV,Scalar(Y_MIN,U_MIN,V_MIN),Scalar(Y_MAX,U_MAX,V_MAX),threshold);
 			morphOps(threshold);
-			imshow(windowName2,YUV);
+			imshow(windowName1,YUV);
 			trackFilteredObject(threshold,YUV,cameraFeed);
 		} else {
 			// Declare a list of object to be label - LED's colours
 			LED red("red");
 
-			cvtColor(cameraFeed,HSV,COLOR_BGR2HSV);
-			inRange(HSV, red.getHSVMin(), red.getHSVMax(), threshold);
-			trackFilteredObject(red, threshold,HSV,cameraFeed);
+			cvtColor(cameraFeed,YUV,COLOR_BGR2YUV);
+			inRange(YUV, red.getYUVMin(), red.getYUVMax(), threshold);
+			trackFilteredObject(red, threshold,YUV,cameraFeed);
 		}
 		
-		// Display particle on the actual image frame
-		for (int ii = 0; ii < particles.size(); ii++) {
-			cv::circle(cameraFeed, cv::Point(particles[ii].getX(), particles[ii].getY()),
-						1, Scalar(0, 0, 255), 1, 0, 0);
-		}
-
-		scoreParticles(cameraFeed);
+		//scoreParticles(cameraFeed);
 
 		//filteredThresh = threshold.clone();
 		//medianFilter(threshold);
 
 		//show frames 
 		imshow(windowName,cameraFeed);
-		imshow(windowName1,threshold);
+		imshow(windowName2,threshold);
 		//imshow(windowName4, filteredThresh);
 		//delay 30ms so that screen can refresh.
 		//image will not appear without this waitKey() command
